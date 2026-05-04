@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>
+      ⛴️ CURREVO Regional Terminal | Ferry + Bus Terminal Dashboard
+    </title>
+    <!-- Tailwind CSS + Font Awesome + Google Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+      * {
+        font-family: "Inter", sans-serif;
+      }
+      body {
+        background: linear-gradient(
+          145deg,
+          #053d33 0%,
+          #0f6b5a 50%,
+          #0b4f42 100%
+        );
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.06;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Animations */
+      @keyframes fadeInScale {
+        0% {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes slideInLeft {
+        0% {
+          opacity: 0;
+          transform: translateX(-30px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes slideInRight {
+        0% {
+          opacity: 0;
+          transform: translateX(30px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes pulseGlow {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 20px rgba(59, 130, 246, 0);
+        }
+      }
+      @keyframes spinLoader {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: -1000px 0;
+        }
+        100% {
+          background-position: 1000px 0;
+        }
+      }
+
+      .animate-fade-in {
+        animation: fadeInScale 0.4s ease-out;
+      }
+      .animate-slide-left {
+        animation: slideInLeft 0.4s ease-out;
+      }
+      .animate-slide-right {
+        animation: slideInRight 0.4s ease-out;
+      }
+
+      .dashboard-card {
+        background: rgba(255, 255, 255, 0.96);
+        border-radius: 2rem;
+        box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+      }
+
+      /* Loading Overlay */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        animation: fadeInScale 0.2s ease;
+      }
+      .loader {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spinLoader 0.8s linear infinite;
+      }
+
+      .tab-btn {
+        transition: all 0.25s ease;
+        border-radius: 40px;
+        font-weight: 700;
+        background-color: #e2e8f0;
+        color: #334155;
+        padding: 0.6rem 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      .tab-btn.active {
+        background: linear-gradient(135deg, #2563eb, #1e40af);
+        color: white;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+      }
+
+      /* Sidebar styles */
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
+      }
+      .sidebar.collapsed {
+        transform: translateX(-100%);
+      }
+      .main-content {
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .sidebar-toggle {
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .sidebar-toggle:hover {
+        transform: scale(1.05);
+      }
+
+      #seatContainerDashboard {
+        max-height: 520px;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      .seat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 10px;
+        width: 100%;
+      }
+      .seat {
+        background: #f1f5f9;
+        padding: 10px 0;
+        text-align: center;
+        border-radius: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .seat.available {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      .seat.selected {
+        background: #3b82f6;
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      }
+      .seat.blocked {
+        background: #cbd5e1;
+        color: #64748b;
+        cursor: not-allowed;
+        text-decoration: line-through;
+        opacity: 0.6;
+      }
+      .seat.available:hover {
+        background: #cbd5e6;
+        transform: scale(1.02);
+      }
+
+      .input-fancy {
+        transition: 0.2s;
+        border: 1px solid #e2e8f0;
+      }
+      .input-fancy:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        outline: none;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeInScale 0.2s ease-out;
+      }
+      .modal-card {
+        background: white;
+        border-radius: 2rem;
+        max-width: 420px;
+        width: 90%;
+        animation: slideInLeft 0.3s ease;
+      }
+
+      .history-card {
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+      .history-card:hover {
+        transform: translateX(4px);
+        background: #f8fafc;
+      }
+
+      .cancel-btn {
+        transition: all 0.2s;
+      }
+      .cancel-btn:hover {
+        transform: scale(1.02);
+        background: #dc2626 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="relative z-10"></div>
+
+    <script>
+      // ---------- GLOBAL STATE ----------
+      let currentUser = {
+        username: "admin",
+        fullName: "John Doe",
+        email: "john.doe@example.com",
+        memberSince: "2024",
+      };
+      let bookingHistory = [];
+      let sidebarCollapsed = false;
+
+      let currentBooking = {
+        fullName: "John Doe",
+        destination: "Dagupan to Lingayen",
+        departureDate: "",
+        passengers: 2,
+        selectedSeats: [],
+        totalFare: 0,
+        bookingRef: "",
+      };
+
+      const routeMap = {
+        "Dagupan to Lingayen": { price: 115.5, travelTime: "30 minutes" },
+        "Dagupan to Binmaley": { price: 77.0, travelTime: "20 minutes" },
+        "Dagupan to Alaminos (Hundred Islands)": { price: 385.0, travelTime: "1 hr 40 min" },
+        "Dagupan to San Fernando (La Union)": { price: 462.0, travelTime: "2 hrs" },
+        "Dagupan to Sual": { price: 269.5, travelTime: "1 hr 10 min" },
+        "Dagupan to Bolinao": { price: 539.0, travelTime: "2 hrs 20 min" },
+        "Dagupan to Labrador": { price: 192.5, travelTime: "50 minutes" },
+        "Dagupan to Infanta": { price: 616.0, travelTime: "2 hrs 40 min" },
+        "Dagupan to Anda": { price: 423.5, travelTime: "1 hr 50 min" },
+        "Dagupan to Mangatarem (via Agno River)": { price: 308.0, travelTime: "1 hr 20 min" },
+      };
+
+      const scheduleList = [
+        { time: "5:00 AM", route: "Binmaley", travelTime: "20 min" },
+        { time: "6:00 AM", route: "Lingayen", travelTime: "30 min" },
+        { time: "7:00 AM", route: "Labrador", travelTime: "50 min" },
+        { time: "8:00 AM", route: "Sual", travelTime: "1 hr 10 min" },
+        { time: "9:00 AM", route: "Alaminos", travelTime: "1 hr 40 min" },
+        { time: "10:00 AM", route: "Anda", travelTime: "1 hr 50 min" },
+        { time: "11:00 AM", route: "Mangatarem", travelTime: "1 hr 20 min" },
+        { time: "12:00 PM", route: "San Fernando", travelTime: "2 hr" },
+        { time: "1:00 PM", route: "Bolinao", travelTime: "2 hr 20 min" },
+        { time: "2:00 PM", route: "Infanta", travelTime: "2 hr 40 min" },
+      ];
+
+      // Seat master
+      let allSeatsMaster = Array.from({ length: 300 }, (_, i) => ({
+        id: `S${i + 1}`,
+        status: "available",
+      }));
+      const blockedIds = ["S6", "S9", "S13", "S27", "S58", "S89", "S114", "S133", "S197", "S221"];
+      allSeatsMaster.forEach((s) => {
+        if (blockedIds.includes(s.id)) s.status = "blocked";
+      });
+      let currentSeatsState = JSON.parse(JSON.stringify(allSeatsMaster));
+
+      // Helper functions
+      function formatDateShort(dateStr) {
+        if (!dateStr) return "—";
+        const d = new Date(dateStr);
+        return d.toLocaleDateString("en-PH", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      }
+      function formatDateTime() {
+        return new Date().toLocaleString();
+      }
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(
+          /[&<>]/g,
+          (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m],
+        );
+      }
+      function computeTotalFare(passengers, destination) {
+        const route = routeMap[destination];
+        return route ? route.price * passengers : 0;
+      }
+
+      function getEstimatedTravelTime(destination) {
+        return routeMap[destination]?.travelTime || "TBD";
+      }
+
+      // Loading animation
+      function showLoading(callback) {
+        const loader = document.createElement("div");
+        loader.className = "loading-overlay";
+        loader.innerHTML = '<div class="loader"></div>';
+        document.body.appendChild(loader);
+        setTimeout(() => {
+          loader.remove();
+          if (callback) callback();
+        }, 600);
+      }
+
+      // Modal system
+      function showModal(title, message, type = "success") {
+        const existing = document.querySelector(".modal-overlay");
+        if (existing) existing.remove();
+        const icon =
+          type === "success"
+            ? '<i class="fas fa-check-circle text-green-500 text-5xl"></i>'
+            : type === "warning"
+              ? '<i class="fas fa-exclamation-triangle text-amber-500 text-5xl"></i>'
+              : '<i class="fas fa-info-circle text-teal-500 text-5xl"></i>';
+        const modalHtml = `<div class="modal-overlay"><div class="modal-card p-6 text-center"><div class="mb-3 animate-fade-in">${icon}</div><h3 class="text-xl font-bold mb-2">${title}</h3><p class="text-gray-600 mb-5">${message}</p><button id="closeModalBtn" class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-full font-medium transition">Got it</button></div></div>`;
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        document
+          .getElementById("closeModalBtn")
+          ?.addEventListener("click", () =>
+            document.querySelector(".modal-overlay")?.remove(),
+          );
+      }
+
+      function showPaymentSuccessModal(bookingRef, onConfirm) {
+        const modalHtml = `<div class="modal-overlay"><div class="modal-card p-7 text-center"><div class="animate-slide-right"><i class="fas fa-party-horn text-5xl text-teal-500"></i></div><h2 class="text-2xl font-extrabold mt-2">🎉 Payment Successful!</h2><p class="text-gray-500 mt-1">Your ferry or bus booking has been confirmed.</p><div class="bg-teal-50 rounded-2xl p-3 my-4 text-sm font-mono">Ref: ${bookingRef}</div><button id="successConfirmBtn" class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-bold px-8 py-3 rounded-full w-full transition hover:scale-105">View My Bookings</button></div></div>`;
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        document
+          .getElementById("successConfirmBtn")
+          ?.addEventListener("click", () => {
+            document.querySelector(".modal-overlay")?.remove();
+            if (onConfirm) onConfirm();
+          });
+      }
+
+      function showCancelConfirmModal(booking, onConfirm) {
+        const modalHtml = `<div class="modal-overlay"><div class="modal-card p-6 text-center"><i class="fas fa-trash-alt text-red-500 text-5xl mb-3"></i><h3 class="text-xl font-bold mb-2">Cancel Booking?</h3><p class="text-gray-600 mb-4">Are you sure you want to cancel booking ${booking.bookingRef} for ${booking.fullName}?</p><div class="flex gap-3"><button id="confirmCancelBtn" class="bg-red-600 text-white px-4 py-2 rounded-full flex-1 hover:bg-red-700 transition">Yes, Cancel</button><button id="closeCancelBtn" class="bg-gray-200 px-4 py-2 rounded-full flex-1 hover:bg-gray-300 transition">No, Keep</button></div></div></div>`;
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        document
+          .getElementById("confirmCancelBtn")
+          ?.addEventListener("click", () => {
+            document.querySelector(".modal-overlay")?.remove();
+            onConfirm();
+          });
+        document
+          .getElementById("closeCancelBtn")
+          ?.addEventListener("click", () =>
+            document.querySelector(".modal-overlay")?.remove(),
+          );
+      }
+
+      // Cancel booking function
+      function cancelBooking(bookingRef) {
+        const bookingIndex = bookingHistory.findIndex(
+          (b) => b.bookingRef === bookingRef,
+        );
+        if (bookingIndex !== -1) {
+          bookingHistory.splice(bookingIndex, 1);
+          showModal(
+            "Booking Cancelled",
+            `Booking ${bookingRef} has been cancelled successfully.`,
+            "success",
+          );
+          renderDashboard();
+        }
+      }
+
+      // Update UI
+      function updateCurrentSummaryUI() {
+        const summaryDiv = document.getElementById("currentBookingSummary");
+        if (!summaryDiv) return;
+        if (
+          !currentBooking.fullName ||
+          !currentBooking.departureDate ||
+          currentBooking.totalFare === 0
+        ) {
+          summaryDiv.innerHTML = `<div class="text-gray-400 text-sm italic animate-fade-in"><i class="fas fa-info-circle"></i> Fill details & click "Compute Fare"</div>`;
+          return;
+        }
+        summaryDiv.innerHTML = `<div class="space-y-2 text-sm animate-fade-in"><div class="flex justify-between"><span class="font-semibold">👤 Name:</span><span>${escapeHtml(currentBooking.fullName)}</span></div><div class="flex justify-between"><span class="font-semibold">📍 Destination:</span><span>${currentBooking.destination}</span></div><div class="flex justify-between"><span class="font-semibold">📅 Depart:</span><span>${formatDateShort(currentBooking.departureDate)}</span></div><div class="flex justify-between"><span class="font-semibold">👥 Passengers:</span><span>${currentBooking.passengers}</span></div><div class="flex justify-between"><span class="font-semibold">💺 Seats:</span><span>${currentBooking.selectedSeats.length ? currentBooking.selectedSeats.join(", ") : "—"}</span></div><div class="border-t pt-2 mt-1 flex justify-between font-bold text-teal-700"><span>💰 Total Fare:</span><span>₱${currentBooking.totalFare.toLocaleString()}</span></div></div>`;
+      }
+
+      function renderSeatMap() {
+        const container = document.getElementById("seatContainerDashboard");
+        if (!container) return;
+        currentSeatsState.forEach((seat) => {
+          if (
+            currentBooking.selectedSeats.includes(seat.id) &&
+            seat.status !== "blocked"
+          )
+            seat.status = "selected";
+          else if (
+            seat.status === "selected" &&
+            !currentBooking.selectedSeats.includes(seat.id)
+          )
+            seat.status = "available";
+        });
+        container.innerHTML = "";
+        const grid = document.createElement("div");
+        grid.className = "seat-grid";
+        currentSeatsState.forEach((seat) => {
+          const btn = document.createElement("div");
+          btn.className = `seat ${seat.status}`;
+          btn.innerText = seat.id;
+          if (seat.status !== "blocked") {
+            btn.addEventListener("click", () => {
+              if (seat.status === "selected") {
+                const idx = currentBooking.selectedSeats.indexOf(seat.id);
+                if (idx !== -1) currentBooking.selectedSeats.splice(idx, 1);
+                seat.status = "available";
+              } else {
+                currentBooking.selectedSeats.push(seat.id);
+                seat.status = "selected";
+              }
+              updateCurrentSummaryUI();
+              renderSeatMap();
+            });
+          }
+          grid.appendChild(btn);
+        });
+        container.appendChild(grid);
+        const legend = document.createElement("div");
+        legend.className = "flex gap-4 text-xs mt-3 text-gray-500";
+        legend.innerHTML = `<span><i class="fas fa-chair text-teal-500"></i> Selected</span> <span><i class="fas fa-ban text-gray-400"></i> Blocked</span> <span><i class="fas fa-chair text-gray-400"></i> Available</span>`;
+        container.appendChild(legend);
+      }
+
+      function handleComputeFare() {
+        const fullName = document.getElementById("fullNameInput")?.value.trim();
+        const dest = document.getElementById("destSelect")?.value;
+        const depDate = document.getElementById("departDate")?.value;
+        const paxValue = document.getElementById("paxSelect")?.value.trim();
+        const pax = parseInt(paxValue, 10);
+        if (!fullName) {
+          showModal("Missing Info", "Enter full name.", "warning");
+          return false;
+        }
+        if (!depDate) {
+          showModal("Dates Required", "Select departure date.", "warning");
+          return false;
+        }
+        if (!paxValue || isNaN(pax) || pax < 1 || pax > 300) {
+          showModal("Invalid Passenger Count", "Enter a number between 1 and 300.", "warning");
+          return false;
+        }
+        const total = computeTotalFare(pax, dest);
+        currentBooking.fullName = fullName;
+        currentBooking.destination = dest;
+        currentBooking.departureDate = depDate;
+        currentBooking.passengers = pax;
+        currentBooking.totalFare = total;
+        updateCurrentSummaryUI();
+        renderSeatMap();
+        showModal(
+          "Fare Computed",
+          `Total: ₱${total.toLocaleString()} for ${pax} passenger(s).`,
+          "success",
+        );
+        return true;
+      }
+
+      function processPayment(cardNumber, expiry, cvv, cardName) {
+        if (currentBooking.selectedSeats.length === 0) {
+          showModal(
+            "Seats Required",
+            `Please select at least one seat before checkout.`,
+            "warning",
+          );
+          return false;
+        }
+        if (currentBooking.totalFare <= 0) {
+          showModal("Compute Fare", "Please compute fare first.", "warning");
+          return false;
+        }
+        if (!cardNumber || !expiry || !cvv || !cardName) {
+          showModal("Payment Error", "Fill all payment fields.", "warning");
+          return false;
+        }
+        if (cardNumber.replace(/\s/g, "").length < 15) {
+          showModal("Invalid Card", "Enter valid card number.", "warning");
+          return false;
+        }
+
+        const newRef = "AMC" + Math.floor(Math.random() * 900000 + 100000);
+        currentBooking.bookingRef = newRef;
+
+        const completedBooking = {
+          bookingRef: newRef,
+          fullName: currentBooking.fullName,
+          destination: currentBooking.destination,
+          departureDate: currentBooking.departureDate,
+          passengers: currentBooking.passengers,
+          selectedSeats: [...currentBooking.selectedSeats],
+          totalFare: currentBooking.totalFare,
+          bookingDate: formatDateTime(),
+        };
+        bookingHistory.unshift(completedBooking);
+
+        currentBooking = {
+          fullName: currentUser?.fullName || "John Doe",
+          destination: "Dagupan to Lingayen",
+          departureDate: "",
+          passengers: 2,
+          selectedSeats: [],
+          totalFare: 0,
+          bookingRef: "",
+        };
+        currentSeatsState = JSON.parse(JSON.stringify(allSeatsMaster));
+
+        showPaymentSuccessModal(newRef, () => {
+          setActiveTab("history");
+        });
+        return true;
+      }
+
+      function downloadTicket(booking) {
+        const ticketHtml = `<div style="padding:20px;font-family:sans-serif;border-left:8px solid #0f766e;background:#f8fafc;border-radius:16px;"><h2 style="color:#0f766e;">⛴️ CURREVO Terminal Ticket</h2><hr><p><strong>Reference:</strong> ${booking.bookingRef}</p><p><strong>Passenger:</strong> ${booking.fullName}</p><p><strong>Destination:</strong> ${booking.destination}</p><p><strong>Departure:</strong> ${formatDateShort(booking.departureDate)}</p><p><strong>Seats:</strong> ${booking.selectedSeats.join(",")} | <strong>Passengers:</strong> ${booking.passengers}</p><p><strong>Total Paid:</strong> ₱${booking.totalFare.toLocaleString()}</p><p style="margin-top:20px;">✨ Have a safe journey! Thank you for choosing CURREVO.</p></div>`;
+        const element = document.createElement("div");
+        element.innerHTML = ticketHtml;
+        document.body.appendChild(element);
+        const opt = {
+          margin: [0.5, 0.5],
+          filename: `CURREVOTicket_${booking.bookingRef}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "in", format: "a4" },
+        };
+        html2pdf()
+          .set(opt)
+          .from(element)
+          .save()
+          .then(() => document.body.removeChild(element));
+        showModal(
+          "Download Started",
+          "Your ticket PDF is being generated.",
+          "success",
+        );
+      }
+
+      function attemptLogin(username, password) {
+        if (username === "admin" && password === "admin1234") {
+          showLoading(() => {
+            currentUser = {
+              username: "admin",
+              fullName: "John Doe",
+              email: "john.doe@example.com",
+              memberSince: "2024",
+            };
+            showModal(
+              "Welcome Back",
+              "✅ Login successful! Welcome to your dashboard.",
+              "success",
+            );
+            setTimeout(() => renderDashboard(), 300);
+          });
+          return true;
+        } else {
+          showModal(
+            "Login Failed",
+            "Invalid credentials. Use admin / admin1234",
+            "warning",
+          );
+          return false;
+        }
+      }
+
+      function logout() {
+        showLoading(() => {
+          currentUser = {
+            username: "admin",
+            fullName: "John Doe",
+            email: "john.doe@example.com",
+            memberSince: "2024",
+          };
+          currentBooking = {
+            fullName: "John Doe",
+            destination: "Dagupan to Lingayen",
+            departureDate: "",
+            passengers: 2,
+            selectedSeats: [],
+            totalFare: 0,
+            bookingRef: "",
+          };
+          currentSeatsState = JSON.parse(JSON.stringify(allSeatsMaster));
+          bookingHistory = [];
+          renderDashboard();
+          showModal(
+            "Logged Out",
+            "You have been logged out successfully.",
+            "success",
+          );
+        });
+      }
+
+      function toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        const sidebar = document.getElementById("mainSidebar");
+        const mainContent = document.getElementById("mainContent");
+        if (sidebar) {
+          if (sidebarCollapsed) {
+            sidebar.classList.add("collapsed");
+            mainContent.style.marginLeft = "0px";
+          } else {
+            sidebar.classList.remove("collapsed");
+            mainContent.style.marginLeft = "280px";
+          }
+        }
+      }
+
+      let currentDashboardTab = "new";
+
+      function setActiveTab(tab) {
+        currentDashboardTab = tab;
+        renderDashboard();
+      }
+
+      function renderPaymentTab() {
+        const contentDiv = document.getElementById("dashboardContentArea");
+        if (!contentDiv) return;
+        contentDiv.innerHTML = `
+                <div class="max-w-3xl mx-auto animate-fade-in">
+                    <div class="bg-white rounded-2xl p-6 shadow-lg">
+                        <h3 class="text-2xl font-bold mb-4"><i class="fas fa-credit-card text-teal-600"></i> Payment Checkout</h3>
+                        <div class="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl p-4 mb-6">
+                            <h4 class="font-bold mb-2">Booking Summary</h4>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div><span class="text-gray-600">Passenger:</span></div><div class="font-semibold">${escapeHtml(currentBooking.fullName || "—")}</div>
+                                <div><span class="text-gray-600">Destination:</span></div><div class="font-semibold">${currentBooking.destination || "—"}</div>
+                                <div><span class="text-gray-600">Estimated Travel:</span></div><div class="font-semibold">${getEstimatedTravelTime(currentBooking.destination)}</div>
+                                <div><span class="text-gray-600">Dates:</span></div><div class="font-semibold">${formatDateShort(currentBooking.departureDate)} → ${formatDateShort(currentBooking.returnDate)}</div>
+                                <div><span class="text-gray-600">Seats:</span></div><div class="font-semibold">${currentBooking.selectedSeats.length ? currentBooking.selectedSeats.join(", ") : "None"}</div>
+                                <div><span class="text-gray-600">Passengers:</span></div><div class="font-semibold">${currentBooking.passengers}</div>
+                                <div class="border-t pt-2 mt-1"><span class="font-bold">Total:</span></div><div class="font-bold text-xl text-teal-700">₱${currentBooking.totalFare.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div><label class="font-semibold">💳 Card Number</label><input type="text" id="paymentCardNumber" placeholder="1234 5678 9012 3456" class="w-full border p-3 rounded-xl input-fancy mt-1"></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="font-semibold">Expiry Date</label><input type="text" id="paymentExpiry" placeholder="MM/YY" class="w-full border p-3 rounded-xl input-fancy mt-1"></div>
+                                <div><label class="font-semibold">CVV</label><input type="text" id="paymentCvv" placeholder="123" class="w-full border p-3 rounded-xl input-fancy mt-1"></div>
+                            </div>
+                            <div><label class="font-semibold">Name on Card</label><input type="text" id="paymentCardName" value="${escapeHtml(currentBooking.fullName)}" class="w-full border p-3 rounded-xl input-fancy mt-1"></div>
+                            <button id="confirmPaymentBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transition mt-4">💰 Pay ₱${currentBooking.totalFare.toLocaleString()}</button>
+                            <button id="backToNewBookingBtn" class="w-full text-gray-500 underline text-sm py-2">← Back to Edit Booking</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        document
+          .getElementById("confirmPaymentBtn")
+          ?.addEventListener("click", () => {
+            const card = document.getElementById("paymentCardNumber").value;
+            const expiry = document.getElementById("paymentExpiry").value;
+            const cvv = document.getElementById("paymentCvv").value;
+            const name = document.getElementById("paymentCardName").value;
+            processPayment(card, expiry, cvv, name);
+          });
+        document
+          .getElementById("backToNewBookingBtn")
+          ?.addEventListener("click", () => setActiveTab("new"));
+      }
+
+      function renderScheduleTab() {
+        const contentDiv = document.getElementById("dashboardContentArea");
+        if (!contentDiv) return;
+        let scheduleHtml = `<div class="animate-fade-in bg-white rounded-2xl p-6 shadow-lg"><div class="flex items-center gap-3 mb-4"><i class="fas fa-clock text-teal-600 text-xl"></i><h3 class="text-2xl font-bold">Ferry Schedules</h3></div><div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="bg-teal-50"><th class="px-4 py-3 text-sm font-semibold">Time</th><th class="px-4 py-3 text-sm font-semibold">Route</th><th class="px-4 py-3 text-sm font-semibold">Travel Time</th></tr></thead><tbody>`;
+        scheduleList.forEach((item) => {
+          scheduleHtml += `<tr class="border-t"><td class="px-4 py-3 text-sm text-gray-700">${item.time}</td><td class="px-4 py-3 text-sm text-gray-700">${item.route}</td><td class="px-4 py-3 text-sm text-gray-700">${item.travelTime}</td></tr>`;
+        });
+        scheduleHtml += `</tbody></table></div></div>`;
+        contentDiv.innerHTML = scheduleHtml;
+      }
+
+      function renderDashboard() {
+        if (!currentUser) {
+          renderLogin();
+          return;
+        }
+        const appDiv = document.getElementById("app");
+        appDiv.innerHTML = `
+                <div class="flex">
+                    <!-- Sidebar -->
+                    <div id="mainSidebar" class="sidebar w-72 p-5 ${sidebarCollapsed ? "collapsed" : ""}" style="width: 280px;">
+                        <div class="flex justify-between items-center mb-8">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-ship text-2xl text-teal-600"></i>
+                                <span class="font-bold text-xl">CURREVO Terminal</span>
+                            </div>
+                            <button id="closeSidebarBtn" class="sidebar-toggle text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                        <div class="space-y-2">
+                            <button id="sideNewBtn" class="w-full text-left px-4 py-3 rounded-xl ${currentDashboardTab === "new" ? "bg-teal-600 text-white" : "hover:bg-gray-100"} transition"><i class="fas fa-plus-circle mr-3"></i> New Booking</button>
+                            <button id="sidePaymentBtn" class="w-full text-left px-4 py-3 rounded-xl ${currentDashboardTab === "payment" ? "bg-teal-600 text-white" : "hover:bg-gray-100"} transition"><i class="fas fa-credit-card mr-3"></i> Payment</button>
+                            <button id="sideScheduleBtn" class="w-full text-left px-4 py-3 rounded-xl ${currentDashboardTab === "schedule" ? "bg-teal-600 text-white" : "hover:bg-gray-100"} transition"><i class="fas fa-clock mr-3"></i> Schedules</button>
+                            <button id="sideHistoryBtn" class="w-full text-left px-4 py-3 rounded-xl ${currentDashboardTab === "history" ? "bg-teal-600 text-white" : "hover:bg-gray-100"} transition"><i class="fas fa-history mr-3"></i> My Bookings (${bookingHistory.length})</button>
+                        </div>
+                        <div class="absolute bottom-5 left-5 right-5">
+                            <button id="logoutSideBtn" class="w-full text-left px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition"><i class="fas fa-sign-out-alt mr-3"></i> Logout</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Content -->
+                    <div id="mainContent" class="main-content flex-1 p-4" style="margin-left: 280px;">
+                        <div class="dashboard-card overflow-hidden">
+                            <!-- Header with Toggle Button -->
+                            <div class="bg-white/90 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <button id="toggleSidebarBtn" class="sidebar-toggle text-gray-600 hover:text-teal-600"><i class="fas fa-bars text-xl"></i></button>
+                                    <h1 class="text-2xl font-extrabold bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent">CURREVO Terminal</h1>
+                                </div>
+                                <div class="flex items-center gap-3 bg-gray-100 rounded-full pl-4 pr-2 py-1.5 shadow-sm">
+                                    <div class="text-right hidden sm:block"><p class="text-sm font-bold">${escapeHtml(currentUser.fullName)}</p><p class="text-xs text-gray-500">${currentUser.email}</p></div>
+                                    <div class="bg-teal-600 text-white rounded-full w-10 h-10 flex items-center justify-center"><i class="fas fa-user-alt"></i></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Buttons -->
+                            <div class="flex justify-start gap-3 px-6 pt-4 border-b">
+                                <button id="tabNewBtn" class="tab-btn ${currentDashboardTab === "new" ? "active" : ""}"><i class="fas fa-plus-circle"></i> New Booking</button>
+                                <button id="tabPaymentBtn" class="tab-btn ${currentDashboardTab === "payment" ? "active" : ""}"><i class="fas fa-credit-card"></i> Payment</button>
+                                <button id="tabScheduleBtn" class="tab-btn ${currentDashboardTab === "schedule" ? "active" : ""}"><i class="fas fa-clock"></i> Schedules</button>
+                                <button id="tabHistoryBtn" class="tab-btn ${currentDashboardTab === "history" ? "active" : ""}"><i class="fas fa-history"></i> My Bookings (${bookingHistory.length})</button>
+                            </div>
+                            
+                            <div id="dashboardContentArea" class="p-6"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        // Event listeners
+        document
+          .getElementById("toggleSidebarBtn")
+          ?.addEventListener("click", toggleSidebar);
+        document
+          .getElementById("closeSidebarBtn")
+          ?.addEventListener("click", toggleSidebar);
+        document
+          .getElementById("logoutSideBtn")
+          ?.addEventListener("click", logout);
+        document
+          .getElementById("tabNewBtn")
+          ?.addEventListener("click", () => setActiveTab("new"));
+        document
+          .getElementById("tabPaymentBtn")
+          ?.addEventListener("click", () => setActiveTab("payment"));
+        document
+          .getElementById("tabScheduleBtn")
+          ?.addEventListener("click", () => setActiveTab("schedule"));
+        document
+          .getElementById("tabHistoryBtn")
+          ?.addEventListener("click", () => setActiveTab("history"));
+        document
+          .getElementById("sideNewBtn")
+          ?.addEventListener("click", () => setActiveTab("new"));
+        document
+          .getElementById("sidePaymentBtn")
+          ?.addEventListener("click", () => setActiveTab("payment"));
+        document
+          .getElementById("sideScheduleBtn")
+          ?.addEventListener("click", () => setActiveTab("schedule"));
+        document
+          .getElementById("sideHistoryBtn")
+          ?.addEventListener("click", () => setActiveTab("history"));
+
+        const contentDiv = document.getElementById("dashboardContentArea");
+        if (currentDashboardTab === "new") {
+          contentDiv.innerHTML = `
+                    <div class="grid lg:grid-cols-3 gap-6 animate-fade-in">
+                        <div class="lg:col-span-2 space-y-5">
+                            <div class="bg-gray-50 rounded-2xl p-5">
+                                <h3 class="font-bold text-lg mb-3"><i class="fas fa-edit text-teal-600"></i> Travel Details</h3>
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div><label class="font-semibold">Full Name</label><input id="fullNameInput" class="w-full p-2.5 rounded-xl border input-fancy" value="${escapeHtml(currentBooking.fullName)}"></div>
+                                    <div><label class="font-semibold">Route</label><select id="destSelect" class="w-full p-2.5 rounded-xl border"><option value="Dagupan to Lingayen" ${currentBooking.destination === "Dagupan to Lingayen" ? "selected" : ""}>Dagupan to Lingayen (₱115.50)</option><option value="Dagupan to Binmaley" ${currentBooking.destination === "Dagupan to Binmaley" ? "selected" : ""}>Dagupan to Binmaley (₱77.00)</option><option value="Dagupan to Alaminos (Hundred Islands)" ${currentBooking.destination === "Dagupan to Alaminos (Hundred Islands)" ? "selected" : ""}>Dagupan to Alaminos (Hundred Islands) (₱385.00)</option><option value="Dagupan to San Fernando (La Union)" ${currentBooking.destination === "Dagupan to San Fernando (La Union)" ? "selected" : ""}>Dagupan to San Fernando (La Union) (₱462.00)</option><option value="Dagupan to Sual" ${currentBooking.destination === "Dagupan to Sual" ? "selected" : ""}>Dagupan to Sual (₱269.50)</option><option value="Dagupan to Bolinao" ${currentBooking.destination === "Dagupan to Bolinao" ? "selected" : ""}>Dagupan to Bolinao (₱539.00)</option><option value="Dagupan to Labrador" ${currentBooking.destination === "Dagupan to Labrador" ? "selected" : ""}>Dagupan to Labrador (₱192.50)</option><option value="Dagupan to Infanta" ${currentBooking.destination === "Dagupan to Infanta" ? "selected" : ""}>Dagupan to Infanta (₱616.00)</option><option value="Dagupan to Anda" ${currentBooking.destination === "Dagupan to Anda" ? "selected" : ""}>Dagupan to Anda (₱423.50)</option><option value="Dagupan to Mangatarem (via Agno River)" ${currentBooking.destination === "Dagupan to Mangatarem (via Agno River)" ? "selected" : ""}>Dagupan to Mangatarem (via Agno River) (₱308.00)</option></select></div>
+                                    <div><label class="font-semibold">Departure Date</label><input type="date" id="departDate" class="w-full p-2.5 rounded-xl border" value="${currentBooking.departureDate || ""}"></div>
+                                    <div><label class="font-semibold">Passengers</label><input id="paxSelect" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Enter number of seats" value="${currentBooking.passengers}" class="w-full p-2.5 rounded-xl border input-fancy"></div>
+                                    <div class="flex items-end"><button id="computeBtnDash" class="bg-teal-600 text-white w-full py-2.5 rounded-xl font-bold shadow transition hover:scale-105">Compute Fare</button></div>
+                                </div>
+                                <div id="currentBookingSummary" class="mt-4 bg-white rounded-xl p-4"></div>
+                            </div>
+                            <div class="bg-gray-50 rounded-2xl p-5"><div class="font-bold text-lg mb-2"><i class="fas fa-couch"></i> Select Seats</div><div id="seatContainerDashboard"></div></div>
+                            <button id="gotoPaymentBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-2xl shadow-lg text-lg transition">Proceed to Payment →</button>
+                        </div>
+                        <div class="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 shadow-md h-fit">
+                            <h3 class="font-black text-lg border-l-4 border-teal-500 pl-3">💼 Quick Info</h3>
+                            <div class="mt-3 text-sm space-y-2"><i class="fas fa-user-circle"></i> Logged as: <strong>${escapeHtml(currentUser.fullName)}</strong></div>
+                            <hr class="my-3"><div class="text-xs text-gray-500"><i class="fas fa-shield-alt"></i> Secure payment after seat selection</div>
+                        </div>
+                    </div>
+                `;
+          document
+            .getElementById("computeBtnDash")
+            ?.addEventListener("click", handleComputeFare);
+          document
+            .getElementById("gotoPaymentBtn")
+            ?.addEventListener("click", () => {
+              if (currentBooking.selectedSeats.length > 0 && currentBooking.totalFare > 0) {
+                setActiveTab("payment");
+              } else {
+                showModal(
+                  "Cannot Proceed",
+                  `Select at least one seat and compute fare before checkout.`,
+                  "warning",
+                );
+              }
+            });
+          updateCurrentSummaryUI();
+          renderSeatMap();
+        } else if (currentDashboardTab === "payment") {
+          renderPaymentTab();
+        } else if (currentDashboardTab === "schedule") {
+          renderScheduleTab();
+        } else if (currentDashboardTab === "history") {
+          if (bookingHistory.length === 0) {
+            contentDiv.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl animate-fade-in"><i class="fas fa-ticket-alt text-6xl text-gray-300 mb-3"></i><p class="text-gray-500">No bookings yet. Create your first ferry or bus booking!</p><button id="gotoNewBooking" class="mt-4 bg-teal-600 text-white px-5 py-2 rounded-full transition hover:scale-105">+ New Booking</button></div>`;
+            document
+              .getElementById("gotoNewBooking")
+              ?.addEventListener("click", () => setActiveTab("new"));
+          } else {
+            let historyHtml = `<div class="space-y-4 animate-slide-right"><h3 class="font-bold text-xl"><i class="fas fa-clock"></i> Your Booking History (${bookingHistory.length} bookings)</h3>`;
+            bookingHistory.forEach((book) => {
+              historyHtml += `
+                            <div class="history-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div class="flex flex-wrap justify-between items-start gap-3">
+                                    <div><span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">${book.bookingRef}</span><p class="font-bold mt-1">${escapeHtml(book.fullName)}</p><p class="text-sm"><i class="fas fa-map-marker-alt text-teal-500"></i> ${book.destination}</p><p class="text-xs text-gray-500">📅 ${formatDateShort(book.departureDate)}</p><p class="text-xs">💺 Seats: ${book.selectedSeats.join(",")} | 👥 ${book.passengers} pax</p></div>
+                                    <div class="text-right"><p class="font-bold text-xl text-teal-700">₱${book.totalFare.toLocaleString()}</p><p class="text-xs text-gray-400">Booked: ${book.bookingDate}</p><div class="flex gap-2 mt-2"><button class="downloadTicketBtn bg-teal-50 text-teal-700 px-3 py-1.5 rounded-full text-sm font-semibold transition hover:scale-105" data-ref="${book.bookingRef}"><i class="fas fa-download"></i> PDF</button><button class="cancelBookingBtn bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-sm font-semibold transition hover:scale-105" data-ref="${book.bookingRef}"><i class="fas fa-trash"></i> Cancel</button></div></div>
+                                </div>
+                            </div>
+                        `;
+            });
+            historyHtml += `</div><div class="mt-6 text-center"><button id="newBookingFromHistory" class="bg-teal-600 text-white px-5 py-2 rounded-full transition hover:scale-105"><i class="fas fa-plus"></i> New Booking</button></div>`;
+            contentDiv.innerHTML = historyHtml;
+            document.querySelectorAll(".downloadTicketBtn").forEach((btn) => {
+              btn.addEventListener("click", (e) => {
+                const ref = btn.getAttribute("data-ref");
+                const found = bookingHistory.find((b) => b.bookingRef === ref);
+                if (found) downloadTicket(found);
+              });
+            });
+            document.querySelectorAll(".cancelBookingBtn").forEach((btn) => {
+              btn.addEventListener("click", (e) => {
+                const ref = btn.getAttribute("data-ref");
+                const found = bookingHistory.find((b) => b.bookingRef === ref);
+                if (found)
+                  showCancelConfirmModal(found, () => cancelBooking(ref));
+              });
+            });
+            document
+              .getElementById("newBookingFromHistory")
+              ?.addEventListener("click", () => setActiveTab("new"));
+          }
+        }
+      }
+
+      function renderLogin() {
+        const appDiv = document.getElementById("app");
+        appDiv.innerHTML = `
+                <div class="flex justify-center items-center min-h-[85vh]">
+                    <div class="dashboard-card w-full max-w-md p-8 animate-fade-in">
+                        <div class="text-center mb-6"><i class="fas fa-ship text-5xl text-teal-600"></i><h1 class="text-3xl font-extrabold mt-3 bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent">CURREVO Terminal</h1><p class="text-gray-500 mt-1">Ferry + Bus terminal operations dashboard</p></div>
+                        <div class="space-y-4"><input type="text" id="loginUser" placeholder="Username" class="w-full p-3 rounded-xl border input-fancy" value="admin"><input type="password" id="loginPass" placeholder="Password" class="w-full p-3 rounded-xl border input-fancy" value="admin1234"><button id="loginBtn" class="w-full bg-gradient-to-r from-teal-700 to-emerald-600 text-white font-bold py-3 rounded-xl shadow-lg transition hover:scale-105"><i class="fas fa-key"></i> Login to Dashboard</button><div class="text-center text-sm text-gray-400">Demo: admin / admin1234</div></div>
+                    </div>
+                </div>
+            `;
+        document.getElementById("loginBtn")?.addEventListener("click", () => {
+          const u = document.getElementById("loginUser").value;
+          const p = document.getElementById("loginPass").value;
+          attemptLogin(u, p);
+        });
+      }
+
+      renderDashboard();
+    </script>
+  </body>
+</html>
