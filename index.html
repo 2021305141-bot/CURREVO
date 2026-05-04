@@ -167,10 +167,6 @@
         box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
       }
 
-      .brand-title {
-        font-family: 'Blake', sans-serif;
-      }
-
       /* Sidebar styles */
       .sidebar {
         position: fixed;
@@ -307,7 +303,6 @@
         fullName: "John Doe",
         destination: "Dagupan to Lingayen",
         departureDate: "",
-        returnDate: "",
         passengers: 2,
         selectedSeats: [],
         totalFare: 0,
@@ -461,13 +456,12 @@
         if (
           !currentBooking.fullName ||
           !currentBooking.departureDate ||
-          !currentBooking.returnDate ||
           currentBooking.totalFare === 0
         ) {
           summaryDiv.innerHTML = `<div class="text-gray-400 text-sm italic animate-fade-in"><i class="fas fa-info-circle"></i> Fill details & click "Compute Fare"</div>`;
           return;
         }
-        summaryDiv.innerHTML = `<div class="space-y-2 text-sm animate-fade-in"><div class="flex justify-between"><span class="font-semibold">👤 Name:</span><span>${escapeHtml(currentBooking.fullName)}</span></div><div class="flex justify-between"><span class="font-semibold">📍 Destination:</span><span>${currentBooking.destination}</span></div><div class="flex justify-between"><span class="font-semibold">📅 Depart:</span><span>${formatDateShort(currentBooking.departureDate)}</span></div><div class="flex justify-between"><span class="font-semibold">📅 Return:</span><span>${formatDateShort(currentBooking.returnDate)}</span></div><div class="flex justify-between"><span class="font-semibold">👥 Passengers:</span><span>${currentBooking.passengers}</span></div><div class="flex justify-between"><span class="font-semibold">💺 Seats:</span><span>${currentBooking.selectedSeats.length ? currentBooking.selectedSeats.join(", ") : "—"}</span></div><div class="border-t pt-2 mt-1 flex justify-between font-bold text-teal-700"><span>💰 Total Fare:</span><span>₱${currentBooking.totalFare.toLocaleString()}</span></div></div>`;
+        summaryDiv.innerHTML = `<div class="space-y-2 text-sm animate-fade-in"><div class="flex justify-between"><span class="font-semibold">👤 Name:</span><span>${escapeHtml(currentBooking.fullName)}</span></div><div class="flex justify-between"><span class="font-semibold">📍 Destination:</span><span>${currentBooking.destination}</span></div><div class="flex justify-between"><span class="font-semibold">📅 Depart:</span><span>${formatDateShort(currentBooking.departureDate)}</span></div><div class="flex justify-between"><span class="font-semibold">👥 Passengers:</span><span>${currentBooking.passengers}</span></div><div class="flex justify-between"><span class="font-semibold">💺 Seats:</span><span>${currentBooking.selectedSeats.length ? currentBooking.selectedSeats.join(", ") : "—"}</span></div><div class="border-t pt-2 mt-1 flex justify-between font-bold text-teal-700"><span>💰 Total Fare:</span><span>₱${currentBooking.totalFare.toLocaleString()}</span></div></div>`;
       }
 
       function renderSeatMap() {
@@ -519,19 +513,14 @@
         const fullName = document.getElementById("fullNameInput")?.value.trim();
         const dest = document.getElementById("destSelect")?.value;
         const depDate = document.getElementById("departDate")?.value;
-        const retDate = document.getElementById("returnDate")?.value;
         const paxValue = document.getElementById("paxSelect")?.value.trim();
         const pax = parseInt(paxValue, 10);
         if (!fullName) {
           showModal("Missing Info", "Enter full name.", "warning");
           return false;
         }
-        if (!depDate || !retDate) {
-          showModal("Dates Required", "Select dates.", "warning");
-          return false;
-        }
-        if (new Date(depDate) >= new Date(retDate)) {
-          showModal("Invalid Dates", "Return after departure.", "warning");
+        if (!depDate) {
+          showModal("Dates Required", "Select departure date.", "warning");
           return false;
         }
         if (!paxValue || isNaN(pax) || pax < 1 || pax > 300) {
@@ -542,7 +531,6 @@
         currentBooking.fullName = fullName;
         currentBooking.destination = dest;
         currentBooking.departureDate = depDate;
-        currentBooking.returnDate = retDate;
         currentBooking.passengers = pax;
         currentBooking.totalFare = total;
         updateCurrentSummaryUI();
@@ -585,7 +573,6 @@
           fullName: currentBooking.fullName,
           destination: currentBooking.destination,
           departureDate: currentBooking.departureDate,
-          returnDate: currentBooking.returnDate,
           passengers: currentBooking.passengers,
           selectedSeats: [...currentBooking.selectedSeats],
           totalFare: currentBooking.totalFare,
@@ -597,7 +584,6 @@
           fullName: currentUser?.fullName || "John Doe",
           destination: "Dagupan to Lingayen",
           departureDate: "",
-          returnDate: "",
           passengers: 2,
           selectedSeats: [],
           totalFare: 0,
@@ -612,7 +598,7 @@
       }
 
       function downloadTicket(booking) {
-        const ticketHtml = `<div style="padding:20px;font-family:sans-serif;border-left:8px solid #0f766e;background:#f8fafc;border-radius:16px;"><h2 style="color:#0f766e;">⛴️ CURREVO Terminal Ticket</h2><hr><p><strong>Reference:</strong> ${booking.bookingRef}</p><p><strong>Passenger:</strong> ${booking.fullName}</p><p><strong>Destination:</strong> ${booking.destination}</p><p><strong>Departure:</strong> ${formatDateShort(booking.departureDate)} | <strong>Return:</strong> ${formatDateShort(booking.returnDate)}</p><p><strong>Seats:</strong> ${booking.selectedSeats.join(",")} | <strong>Passengers:</strong> ${booking.passengers}</p><p><strong>Total Paid:</strong> ₱${booking.totalFare.toLocaleString()}</p><p style="margin-top:20px;">✨ Have a safe journey! Thank you for choosing CURREVO.</p></div>`;
+        const ticketHtml = `<div style="padding:20px;font-family:sans-serif;border-left:8px solid #0f766e;background:#f8fafc;border-radius:16px;"><h2 style="color:#0f766e;">⛴️ CURREVO Terminal Ticket</h2><hr><p><strong>Reference:</strong> ${booking.bookingRef}</p><p><strong>Passenger:</strong> ${booking.fullName}</p><p><strong>Destination:</strong> ${booking.destination}</p><p><strong>Departure:</strong> ${formatDateShort(booking.departureDate)}</p><p><strong>Seats:</strong> ${booking.selectedSeats.join(",")} | <strong>Passengers:</strong> ${booking.passengers}</p><p><strong>Total Paid:</strong> ₱${booking.totalFare.toLocaleString()}</p><p style="margin-top:20px;">✨ Have a safe journey! Thank you for choosing CURREVO.</p></div>`;
         const element = document.createElement("div");
         element.innerHTML = ticketHtml;
         document.body.appendChild(element);
@@ -674,7 +660,6 @@
             fullName: "John Doe",
             destination: "Dagupan to Lingayen",
             departureDate: "",
-            returnDate: "",
             passengers: 2,
             selectedSeats: [],
             totalFare: 0,
@@ -805,7 +790,7 @@
                             <div class="bg-white/90 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
                                 <div class="flex items-center gap-3">
                                     <button id="toggleSidebarBtn" class="sidebar-toggle text-gray-600 hover:text-teal-600"><i class="fas fa-bars text-xl"></i></button>
-                                    <h1 class="text-2xl font-extrabold brand-title bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent">CURREVO Terminal</h1>
+                                    <h1 class="text-2xl font-extrabold bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent">CURREVO Terminal</h1>
                                 </div>
                                 <div class="flex items-center gap-3 bg-gray-100 rounded-full pl-4 pr-2 py-1.5 shadow-sm">
                                     <div class="text-right hidden sm:block"><p class="text-sm font-bold">${escapeHtml(currentUser.fullName)}</p><p class="text-xs text-gray-500">${currentUser.email}</p></div>
@@ -873,7 +858,6 @@
                                     <div><label class="font-semibold">Full Name</label><input id="fullNameInput" class="w-full p-2.5 rounded-xl border input-fancy" value="${escapeHtml(currentBooking.fullName)}"></div>
                                     <div><label class="font-semibold">Route</label><select id="destSelect" class="w-full p-2.5 rounded-xl border"><option value="Dagupan to Lingayen" ${currentBooking.destination === "Dagupan to Lingayen" ? "selected" : ""}>Dagupan to Lingayen (₱115.50)</option><option value="Dagupan to Binmaley" ${currentBooking.destination === "Dagupan to Binmaley" ? "selected" : ""}>Dagupan to Binmaley (₱77.00)</option><option value="Dagupan to Alaminos (Hundred Islands)" ${currentBooking.destination === "Dagupan to Alaminos (Hundred Islands)" ? "selected" : ""}>Dagupan to Alaminos (Hundred Islands) (₱385.00)</option><option value="Dagupan to San Fernando (La Union)" ${currentBooking.destination === "Dagupan to San Fernando (La Union)" ? "selected" : ""}>Dagupan to San Fernando (La Union) (₱462.00)</option><option value="Dagupan to Sual" ${currentBooking.destination === "Dagupan to Sual" ? "selected" : ""}>Dagupan to Sual (₱269.50)</option><option value="Dagupan to Bolinao" ${currentBooking.destination === "Dagupan to Bolinao" ? "selected" : ""}>Dagupan to Bolinao (₱539.00)</option><option value="Dagupan to Labrador" ${currentBooking.destination === "Dagupan to Labrador" ? "selected" : ""}>Dagupan to Labrador (₱192.50)</option><option value="Dagupan to Infanta" ${currentBooking.destination === "Dagupan to Infanta" ? "selected" : ""}>Dagupan to Infanta (₱616.00)</option><option value="Dagupan to Anda" ${currentBooking.destination === "Dagupan to Anda" ? "selected" : ""}>Dagupan to Anda (₱423.50)</option><option value="Dagupan to Mangatarem (via Agno River)" ${currentBooking.destination === "Dagupan to Mangatarem (via Agno River)" ? "selected" : ""}>Dagupan to Mangatarem (via Agno River) (₱308.00)</option></select></div>
                                     <div><label class="font-semibold">Departure Date</label><input type="date" id="departDate" class="w-full p-2.5 rounded-xl border" value="${currentBooking.departureDate || ""}"></div>
-                                    <div><label class="font-semibold">Return Date</label><input type="date" id="returnDate" class="w-full p-2.5 rounded-xl border" value="${currentBooking.returnDate || ""}"></div>
                                     <div><label class="font-semibold">Passengers</label><input id="paxSelect" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Enter number of seats" value="${currentBooking.passengers}" class="w-full p-2.5 rounded-xl border input-fancy"></div>
                                     <div class="flex items-end"><button id="computeBtnDash" class="bg-teal-600 text-white w-full py-2.5 rounded-xl font-bold shadow transition hover:scale-105">Compute Fare</button></div>
                                 </div>
@@ -923,7 +907,7 @@
               historyHtml += `
                             <div class="history-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                                 <div class="flex flex-wrap justify-between items-start gap-3">
-                                    <div><span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">${book.bookingRef}</span><p class="font-bold mt-1">${escapeHtml(book.fullName)}</p><p class="text-sm"><i class="fas fa-map-marker-alt text-teal-500"></i> ${book.destination}</p><p class="text-xs text-gray-500">📅 ${formatDateShort(book.departureDate)} → ${formatDateShort(book.returnDate)}</p><p class="text-xs">💺 Seats: ${book.selectedSeats.join(",")} | 👥 ${book.passengers} pax</p></div>
+                                    <div><span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">${book.bookingRef}</span><p class="font-bold mt-1">${escapeHtml(book.fullName)}</p><p class="text-sm"><i class="fas fa-map-marker-alt text-teal-500"></i> ${book.destination}</p><p class="text-xs text-gray-500">📅 ${formatDateShort(book.departureDate)}</p><p class="text-xs">💺 Seats: ${book.selectedSeats.join(",")} | 👥 ${book.passengers} pax</p></div>
                                     <div class="text-right"><p class="font-bold text-xl text-teal-700">₱${book.totalFare.toLocaleString()}</p><p class="text-xs text-gray-400">Booked: ${book.bookingDate}</p><div class="flex gap-2 mt-2"><button class="downloadTicketBtn bg-teal-50 text-teal-700 px-3 py-1.5 rounded-full text-sm font-semibold transition hover:scale-105" data-ref="${book.bookingRef}"><i class="fas fa-download"></i> PDF</button><button class="cancelBookingBtn bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-sm font-semibold transition hover:scale-105" data-ref="${book.bookingRef}"><i class="fas fa-trash"></i> Cancel</button></div></div>
                                 </div>
                             </div>
@@ -958,7 +942,7 @@
         appDiv.innerHTML = `
                 <div class="flex justify-center items-center min-h-[85vh]">
                     <div class="dashboard-card w-full max-w-md p-8 animate-fade-in">
-                        <div class="text-center mb-6"><i class="fas fa-ship text-5xl text-teal-600"></i><h1 class="text-3xl font-extrabold mt-3 brand-title bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent">CURREVO Terminal</h1><p class="text-gray-500 mt-1">Ferry + Bus terminal operations dashboard</p></div>
+                        <div class="text-center mb-6"><i class="fas fa-ship text-5xl text-teal-600"></i><h1 class="text-3xl font-extrabold mt-3 bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent">CURREVO Terminal</h1><p class="text-gray-500 mt-1">Ferry + Bus terminal operations dashboard</p></div>
                         <div class="space-y-4"><input type="text" id="loginUser" placeholder="Username" class="w-full p-3 rounded-xl border input-fancy" value="admin"><input type="password" id="loginPass" placeholder="Password" class="w-full p-3 rounded-xl border input-fancy" value="admin1234"><button id="loginBtn" class="w-full bg-gradient-to-r from-teal-700 to-emerald-600 text-white font-bold py-3 rounded-xl shadow-lg transition hover:scale-105"><i class="fas fa-key"></i> Login to Dashboard</button><div class="text-center text-sm text-gray-400">Demo: admin / admin1234</div></div>
                     </div>
                 </div>
